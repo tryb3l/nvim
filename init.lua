@@ -802,26 +802,52 @@ require('lazy').setup({
     },
   },
 
-  { -- You can easily change to a different colorscheme.
-    -- Change the name of the colorscheme plugin below, and then
-    -- change the command in the config to whatever the name of that colorscheme is.
-    --
-    -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
-    priority = 1000, -- Make sure to load this before all the other start plugins.
+  --- SET COBALT2 COLOR THEME
+  {
+    'lalitmee/cobalt2.nvim',
+    priority = 1000,
+    dependencies = { 'tjdevries/colorbuddy.nvim' },
     config = function()
-      ---@diagnostic disable-next-line: missing-fields
-      require('tokyonight').setup {
-        styles = {
-          comments = { italic = false }, -- Disable italics in comments
-        },
-      }
+      require('colorbuddy').colorscheme 'cobalt2'
 
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      local Color = require('colorbuddy.color').Color
+      local Group = require('colorbuddy.group').Group
+      local s = require('colorbuddy.style').styles
+
+      -- Define High-Contrast Color Objects
+      local gold = Color.new('cobalt_gold', '#ffc600')
+      local white = Color.new('cobalt_white', '#ffffff')
+      local blue = Color.new('cobalt_blue', '#0088ff') -- Used below
+      local cyan = Color.new('cobalt_cyan', '#00f5f9')
+      local bg = Color.new('cobalt_bg', '#193549')
+      local selection = Color.new('cobalt_selection', '#1f4662')
+
+      -- Apply UI Highlights
+      Group.new('Normal', white, bg, s.none)
+      Group.new('String', gold, nil, s.none)
+      Group.new('Identifier', white, nil, s.none)
+      Group.new('Function', gold, nil, s.none)
+
+      -- Use 'blue' for Comments to clear the "unused" warning
+      Group.new('Comment', blue, nil, s.none)
+
+      -- UI & Status Bar
+      Group.new('LineNr', cyan, nil, s.none)
+      Group.new('CursorLineNr', gold, selection, s.bold)
+      Group.new('StatusLine', white, selection, s.none)
+      Group.new('MiniStatuslineModeNormal', bg, gold, s.bold)
     end,
+  },
+
+  {
+    'folke/lazydev.nvim',
+    ft = 'lua',
+    opts = {
+      library = {
+        -- Load luvit types when the `vim.uv` word is found
+        { path = 'luvit-meta/library', words = { 'vim%.uv' } },
+      },
+    },
   },
 
   -- Highlight todo, notes, etc in comments
@@ -892,7 +918,10 @@ require('lazy').setup({
         'vim',
         'vimdoc',
         'c_sharp',
+<<<<<<< HEAD
         'gherkin',
+=======
+>>>>>>> af26179 (Debugger fix, colors, more plugins)
         'javascript',
         'typescript',
         'dockerfile',
