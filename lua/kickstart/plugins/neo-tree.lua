@@ -19,11 +19,24 @@ return {
   ---@type neotree.Config
   opts = {
     filesystem = {
+      -- NO NEED TO REFRESH MANUALLY
+      use_libuv_file_watcher = true,
+      -- INTELLIGENTLY FOLLOW THE CURRENT FILE
+      follow_current_file = {
+        enabled = true,
+        leave_dirs_open = false, -- Closes other folders to keep things clean
+      },
+      -- RESPECT GITIGNORE
+      filtered_items = {
+        hide_gitignored = true,
+        hide_dotfiles = false, -- Useful to see .env files
+      },
       window = {
         mappings = {
           ['\\'] = 'close_window',
         },
       },
     },
+    enable_global_clipboard = true,
   },
 }
