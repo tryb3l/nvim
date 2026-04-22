@@ -6,7 +6,8 @@ return {
       'microsoft/vscode-js-debug',
       -- This build string installs dependencies and then "undos" changes to package-lock.json
       -- so that Git (and Lazy.nvim) sees the directory as clean.
-      build = 'npm install --legacy-peer-deps && npx gulp vsDebugServerBundle && rm -rf out && mv dist out && git checkout package-lock.json',
+         version = '1.76.1',
+         build = "npm install --legacy-peer-deps && npx gulp vsDebugServerBundle && mv dist out", 
     },
   },
 
