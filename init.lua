@@ -318,6 +318,11 @@ do
         vim.cmd 'TSUpdate'
         return
       end
+
+      if name == 'vscode-js-debug' then
+        run_build(name, { 'sh', '-c', 'npm install --legacy-peer-deps && npx gulp vsDebugServerBundle && mv dist out' }, ev.data.path)
+        return
+      end
     end,
   })
 end
@@ -1030,7 +1035,7 @@ do
   -- NOTE: You can add your own plugins, configuration, etc. in `lua/custom/plugins/*.lua`.
   --
   -- For independent modules, uncomment the convenience loader:
-  -- require 'custom.plugins'
+  require 'custom.plugins'
   --
   -- `custom.plugins` automatically loads files from that directory, but their
   -- order is unspecified. If plugins depend on each other, keep them in the same
