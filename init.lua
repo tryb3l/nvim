@@ -110,7 +110,7 @@ do
   vim.o.number = true
   -- You can also add relative line numbers, to help with jumping.
   --  Experiment for yourself to see if you like it!
-  -- vim.o.relativenumber = true
+  vim.o.relativenumber = true
 
   -- Enable mouse mode, can be useful for resizing splits for example!
   vim.o.mouse = 'a'
@@ -194,8 +194,8 @@ do
     underline = { severity = { min = vim.diagnostic.severity.WARN } },
 
     -- Can switch between these as you prefer
-    virtual_text = true,   -- Text shows up at the end of the line
-    virtual_lines = false, -- Text shows up underneath the line, with virtual lines
+    virtual_text = true, -- Text shows up at the end of the line
+    virtual_lines = { current_line = true }, -- Expand full multiline diagnostic underneath the active cursor line
 
     -- Auto open the float, so you can easily read the errors when jumping with `[d` and `]d`
     jump = {
@@ -318,11 +318,6 @@ do
         vim.cmd 'TSUpdate'
         return
       end
-
-      if name == 'vscode-js-debug' then
-        run_build(name, { 'sh', '-c', 'npm install --legacy-peer-deps && npx gulp vsDebugServerBundle && mv dist out' }, ev.data.path)
-        return
-      end
     end,
   })
 end
@@ -419,7 +414,9 @@ do
     -- Document existing key chains
     spec = {
       { '<leader>s', group = '[S]earch',    mode = { 'n', 'v' } },
-      { '<leader>t', group = '[T]oggle' },
+      { '<leader>t', group = '[T]oggle / [T]est' },
+      { '<leader>x', group = 'Diagnostics / Trouble' },
+      { '<leader>g', group = '[G]itHub Actions' },
       { '<leader>h', group = 'Git [H]unk',  mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
       { 'gr',        group = 'LSP Actions', mode = { 'n' } },
     },
@@ -434,9 +431,64 @@ do
   vim.pack.add { gh 'folke/tokyonight.nvim' }
   ---@diagnostic disable-next-line: missing-fields
   require('tokyonight').setup {
+    transparent = true,
     styles = {
       comments = { italic = false }, -- Disable italics in comments
+      sidebars = 'transparent',
+      floats = 'transparent',
     },
+    on_colors = function(colors)
+      colors.bg = '#132738'
+      colors.bg_dark = '#0e1e2c'
+      colors.bg_dark1 = '#0a1621'
+      colors.bg_highlight = '#1f4662'
+      colors.fg = '#ffffff'
+      colors.fg_dark = '#e1efff'
+      colors.fg_gutter = '#7aa2c4'
+      colors.comment = '#0088ff'
+      colors.dark3 = '#7aa2c4'
+      colors.dark5 = '#9dbbd6'
+      colors.yellow = '#ffc600'
+      colors.orange = '#ff9d00'
+      colors.green = '#3ad900'
+      colors.green1 = '#80ffbb'
+      colors.cyan = '#80fcff'
+      colors.blue = '#ffc600'
+      colors.blue1 = '#80fcff'
+      colors.blue2 = '#00bbbb'
+      colors.blue5 = '#ffee80'
+      colors.magenta = '#ff628c'
+      colors.purple = '#fb94ff'
+      colors.red = '#ff628c'
+    end,
+    on_highlights = function(hl, c)
+      hl.LineNr = { fg = '#7aa2c4' }
+      hl.LineNrAbove = { fg = '#6289ab' }
+      hl.LineNrBelow = { fg = '#6289ab' }
+      hl.CursorLineNr = { fg = '#ffc600', bold = true }
+      hl.Visual = { bg = '#1f4662' }
+      hl.Search = { bg = '#ffc600', fg = '#132738', bold = true }
+      hl.IncSearch = { bg = '#ff9d00', fg = '#132738', bold = true }
+      hl.FloatBorder = { fg = '#ffc600' }
+      hl.WinSeparator = { fg = '#234e6d', bold = true }
+      hl.Directory = { fg = '#ffc600', bold = true }
+      hl.Function = { fg = '#ffc600', bold = true }
+      hl['@function'] = { fg = '#ffc600', bold = true }
+      hl['@function.call'] = { fg = '#ffc600' }
+      hl['@method'] = { fg = '#ffc600' }
+      hl['@keyword'] = { fg = '#ff9d00', bold = true }
+      hl['@variable'] = { fg = c.fg }
+      hl['@property'] = { fg = '#9effff' }
+      hl['@variable.member'] = { fg = '#9effff' }
+      hl['@string'] = { fg = '#a5ff90' }
+      hl['@type'] = { fg = '#80fcff' }
+      hl['@tag'] = { fg = '#9effff' }
+      hl['@tag.attribute'] = { fg = '#ffc600' }
+      hl.DiagnosticUnnecessary = { fg = '#9dbbd6', underline = true }
+      hl.TreesitterContext = { bg = '#193549' }
+      hl.TreesitterContextLineNumber = { bg = '#193549', fg = '#ffc600' }
+      hl.TreesitterContextBottom = { underline = true, sp = '#234e6d' }
+    end,
   }
 
   -- Load the colorscheme here.
@@ -480,6 +532,16 @@ do
   -- - sd'   - [S]urround [D]elete [']quotes
   -- - sr)'  - [S]urround [R]eplace [)] [']
   require('mini.surround').setup()
+
+  require('mini.pairs').setup()
+  require('mini.files').setup {
+    options = { use_as_default_explorer = false, permanent_delete = false },
+    windows = { max_number = 3 },
+  }
+  vim.keymap.set('n', '<leader>e', function()
+    local path = vim.api.nvim_buf_get_name(0)
+    require('mini.files').open(vim.uv.fs_stat(path) and path or vim.fn.getcwd())
+  end, { desc = 'Open file [E]xplorer' })
 
   -- Simple and easy statusline.
   --  You could remove this setup call if you don't like it,
@@ -745,17 +807,41 @@ do
   ---@type table<string, vim.lsp.Config>
   local servers = {
     -- clangd = {},
-    -- gopls = {},
+    gopls = {},
+    tsc = {},
+    eslint = {
+      filetypes = { 'javascript', 'javascriptreact' },
+    },
+    jsonls = {
+      before_init = function(_, config)
+        config.settings.json.schemas = require('schemastore').json.schemas()
+      end,
+      settings = {
+        json = {
+          validate = { enable = true },
+        },
+      },
+    },
+    yamlls = {
+      before_init = function(_, config)
+        config.settings.yaml.schemas = require('schemastore').yaml.schemas()
+      end,
+      settings = {
+        yaml = {
+          schemaStore = {
+            enable = false,
+            url = '',
+          },
+        },
+      },
+    },
     -- pyright = {},
-    -- tsc = {},
     --
     -- Some languages (like rust) have entire language plugins that can be useful:
     --    https://github.com/mrcjkb/rustaceanvim
     --
     -- But for many setups, the LSP (`rust_analyzer`) will work just fine
     -- rust_analyzer = {},
-
-    stylua = {}, -- Used to format Lua code
 
     -- Special Lua Config, as recommended by neovim help docs
     lua_ls = {
@@ -795,10 +881,16 @@ do
     gh 'mason-org/mason.nvim',
     gh 'mason-org/mason-lspconfig.nvim',
     gh 'WhoIsSethDaniel/mason-tool-installer.nvim',
+    gh 'b0o/SchemaStore.nvim',
   }
 
   -- Automatically install LSPs and related tools to stdpath for Neovim
-  require('mason').setup {}
+  require('mason').setup {
+    registries = {
+      'github:mason-org/mason-registry',
+      'github:Crashdummyy/mason-registry',
+    },
+  }
 
   -- Translates between nvim-lspconfig server names and mason.nvim package names (e.g. lua_ls <-> lua-language-server)
   require('mason-lspconfig').setup {
@@ -814,7 +906,12 @@ do
   -- You can press `g?` for help in this menu.
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
-    -- You can add other tools here that you want Mason to install
+    'tsgo',
+    'stylua',
+    'prettier',
+    'roslyn',
+    'js-debug-adapter',
+    'netcoredbg',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -833,7 +930,7 @@ do
   -- [[ Formatting ]]
   vim.pack.add { gh 'stevearc/conform.nvim' }
   require('conform').setup {
-    notify_on_error = false,
+    notify_on_error = true,
     format_on_save = function(bufnr)
       -- You can specify filetypes to autoformat on save here:
       local enabled_filetypes = {
@@ -851,12 +948,14 @@ do
     },
     -- You can also specify external formatters in here.
     formatters_by_ft = {
-      -- rust = { 'rustfmt' },
-      -- Conform can also run multiple formatters sequentially
-      -- python = { "isort", "black" },
-      --
-      -- You can use 'stop_after_first' to run the first available formatter from the list
-      -- javascript = { "prettierd", "prettier", stop_after_first = true },
+      lua = { 'stylua' },
+      javascript = { 'prettier' },
+      javascriptreact = { 'prettier' },
+      typescript = { 'prettier' },
+      typescriptreact = { 'prettier' },
+      json = { 'prettier' },
+      jsonc = { 'prettier' },
+      go = { 'gofmt' },
     },
   }
 
@@ -927,7 +1026,14 @@ do
     },
 
     sources = {
-      default = { 'lsp', 'path', 'snippets' },
+      default = { 'lsp', 'path', 'snippets', 'npm' },
+      providers = {
+        npm = {
+          name = 'npm',
+          module = 'custom.npm_versions',
+          async = true,
+        },
+      },
     },
 
     snippets = { preset = 'luasnip' },
@@ -959,15 +1065,50 @@ do
   -- NOTE: You can also specify a branch or a specific commit
   vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
 
-  -- Ensure basic parsers are installed
-  local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+  -- Include injected languages such as jsdoc, which do not trigger FileType.
+  local parsers = {
+    'bash',
+    'c',
+    'diff',
+    'html',
+    'lua',
+    'luadoc',
+    'markdown',
+    'markdown_inline',
+    'query',
+    'vim',
+    'vimdoc',
+    'javascript',
+    'typescript',
+    'tsx',
+    'jsdoc',
+    'json',
+    'go',
+    'gomod',
+    'gosum',
+    'gowork',
+    'c_sharp',
+    'razor',
+    'xml',
+    'sql',
+    'yaml',
+    'toml',
+    'dockerfile',
+    'graphql',
+    'http',
+  }
   require('nvim-treesitter').install(parsers)
 
   ---@param buf integer
   ---@param language string
   local function treesitter_try_attach(buf, language)
     -- Check if the buffer is valid (might not be after install completes)
-    if not vim.api.nvim_buf_is_valid(buf) then return end
+    if not vim.api.nvim_buf_is_loaded(buf) then return end
+    if vim.treesitter.language.get_lang(vim.bo[buf].filetype) ~= language then return end
+
+    -- Skip highlighting/indentation for large generated files.
+    local lines = vim.api.nvim_buf_line_count(buf)
+    if lines > 20000 or vim.api.nvim_buf_get_offset(buf, lines) > 1024 * 1024 then return end
 
     -- Check if a parser exists and load it
     if not vim.treesitter.language.add(language) then return end
@@ -985,7 +1126,7 @@ do
     local has_indent_query = vim.treesitter.query.get(language, 'indents') ~= nil
 
     -- Enable treesitter based indentation
-    if has_indent_query then vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()" end
+    if has_indent_query then vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()" end
   end
 
   local available_parsers = require('nvim-treesitter').get_available()
@@ -1026,8 +1167,8 @@ do
   --  Here are some example plugins that I've included in the Kickstart repository.
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
-  -- require 'kickstart.plugins.debug'
-  -- require 'kickstart.plugins.indent_line'
+  require 'kickstart.plugins.debug'
+  require 'kickstart.plugins.indent_line'
   -- require 'kickstart.plugins.lint'
   -- require 'kickstart.plugins.autopairs'
   -- require 'kickstart.plugins.neo-tree'

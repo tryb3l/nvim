@@ -77,9 +77,9 @@ for the tradeoffs between the two approaches.
 > Your repo's URL will be something like this:
 > `https://github.com/<your_github_username>/kickstart.nvim.git`
 
-You likely want to remove `nvim-pack-lock.json` from your repo's `.gitignore`
-file too - it's ignored in the kickstart repo to make maintenance easier, but
-it's recommended to track it in version control (see `:help vim.pack-lockfile`).
+This local configuration keeps `nvim-pack-lock.json` out of `.gitignore` so the
+installed plugin revisions can be tracked in version control
+(see `:help vim.pack-lockfile`).
 
 #### Clone kickstart.nvim
 
