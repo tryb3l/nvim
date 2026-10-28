@@ -1,20 +1,42 @@
--- JS/TS debugging, migrated from the old lazy.nvim spec at lua/kickstart/plugins/js-debug.lua
--- vscode-js-debug's build step (npm install + gulp bundle) is handled by the
--- PackChanged autocmd in Section 3 of init.lua.
-vim.pack.add {
-  'https://github.com/mfussenegger/nvim-dap',
-  'https://github.com/mxsdev/nvim-dap-vscode-js',
-  { src = 'https://github.com/microsoft/vscode-js-debug', version = 'v1.76.1' },
-}
-
-require('dap-vscode-js').setup {
-  debugger_path = vim.fn.stdpath 'data' .. '/site/pack/core/opt/vscode-js-debug',
-  adapters = { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' },
-}
-
+vim.pack.add { 'https://github.com/mfussenegger/nvim-dap' }
 local dap = require 'dap'
+for _, adapter in ipairs { 'pwa-node', 'pwa-chrome', 'pwa-msedge', 'node-terminal', 'pwa-extensionHost' } do
+  dap.adapters[adapter] = {
+    type = 'server',
+    host = '127.0.0.1',
+    port = '${port}',
+    executable = {
+      command = 'js-debug-adapter',
+      args = { '${port}', '127.0.0.1' },
+    },
+  }
+end
+
 for _, language in ipairs { 'typescript', 'javascript', 'typescriptreact', 'javascriptreact' } do
   dap.configurations[language] = {
+    -- Launch current Fastify / Node / TS file directly
+    {
+      type = 'pwa-node',
+      request = 'launch',
+      name = 'Launch Current File (Node / TS)',
+      program = '${file}',
+      cwd = '${workspaceFolder}',
+      sourceMaps = true,
+      console = 'integratedTerminal',
+      internalConsoleOptions = 'neverOpen',
+    },
+    -- Launch Fastify / Backend via npm run dev
+    {
+      type = 'pwa-node',
+      request = 'launch',
+      name = 'Launch npm run dev (Fastify / Backend)',
+      runtimeExecutable = 'npm',
+      runtimeArgs = { 'run', 'dev' },
+      cwd = '${workspaceFolder}',
+      sourceMaps = true,
+      console = 'integratedTerminal',
+      internalConsoleOptions = 'neverOpen',
+    },
     -- Debug React/Angular via Chrome
     {
       type = 'pwa-chrome',
@@ -29,9 +51,9 @@ for _, language in ipairs { 'typescript', 'javascript', 'typescriptreact', 'java
       type = 'pwa-node',
       request = 'launch',
       name = 'Debug Playwright Tests',
-      runtimeExecutable = 'npx',
-      runtimeArgs = { 'playwright', 'test' },
-      rootPath = '${workspaceFolder}',
+      runtimeExecutable = 'node',
+      program = '${workspaceFolder}/node_modules/@playwright/test/cli.js',
+      args = { 'test', '--workers=1', '--timeout=0' },
       cwd = '${workspaceFolder}',
       console = 'integratedTerminal',
       internalConsoleOptions = 'neverOpen',
