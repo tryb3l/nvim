@@ -417,6 +417,7 @@ do
       { '<leader>t', group = '[T]oggle / [T]est' },
       { '<leader>x', group = 'Diagnostics / Trouble' },
       { '<leader>g', group = '[G]itHub Actions' },
+      { '<leader>p', group = '[P]ackage.json' },
       { '<leader>h', group = 'Git [H]unk',  mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
       { 'gr',        group = 'LSP Actions', mode = { 'n' } },
     },
@@ -1050,6 +1051,8 @@ do
     -- Shows a signature help window while you type arguments for a function
     signature = { enabled = true },
   }
+
+  require('custom.npm_versions').setup()
 end
 
 -- ============================================================
